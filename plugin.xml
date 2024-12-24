@@ -47,36 +47,6 @@
     </config-file>
   </platform>
 
-  <platform name="ios">
-    <config-file target="config.xml" parent="/*">
-      <feature name="CameraPreview">
-        <param name="ios-package" value="CameraPreview" onload="true" />
-      </feature>
-    </config-file>
 
-    <header-file src="src/ios/CameraPreview.h" />
-    <source-file src="src/ios/CameraPreview.m" />
-
-     <header-file src="src/ios/TemperatureAndTint.h" />
-    <source-file src="src/ios/TemperatureAndTint.m" />
-
-    <header-file src="src/ios/CameraSessionManager.h" />
-    <source-file src="src/ios/CameraSessionManager.m" />
-
-    <header-file src="src/ios/CameraRenderController.h" />
-    <source-file src="src/ios/CameraRenderController.m" />
-
-    <framework src="ImageIO.framework" weak="true" />
-    <framework src="MobileCoreServices.framework" />
-    <framework src="CoreLocation.framework" />
-    <framework src="CoreGraphics.framework" />
-    <framework src="AssetsLibrary.framework" />
-    <framework src="CoreGraphics.framework" />
-    <framework src="CoreImage.framework" />
-    <framework src="OpenGLES.framework" />
-    <framework src="GLKit.framework" />
-    <framework src="CoreVideo.framework" />
-    <framework src="QuartzCore.framework"/>
-  </platform>
 
 </plugin>
