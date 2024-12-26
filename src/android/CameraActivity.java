@@ -57,6 +57,8 @@ import java.util.UUID;
 import android.content.Intent;
 import android.net.Uri;
 
+import com.cordovaplugincamerapreview.PhotoPostProcessor;
+
 public class CameraActivity extends Fragment {
 
   public interface CameraPreviewListener {
@@ -112,6 +114,9 @@ public class CameraActivity extends Fragment {
   private RecordingState mRecordingState = RecordingState.INITIALIZING;
   private MediaRecorder mRecorder = null;
   private String recordFilePath;
+
+
+  private PhotoPostProcessor photoPostProcessor;
 
   public void setEventListener(CameraPreviewListener listener){
     eventListener = listener;
@@ -458,70 +463,54 @@ public class CameraActivity extends Fragment {
 
   PictureCallback jpegPictureCallback = new PictureCallback(){
     public void onPictureTaken(byte[] data, Camera arg1){
-      Log.d(TAG, "CameraPreview jpegPictureCallback");
-  
-      try {
-        if (!disableExifHeaderStripping) {
-          Matrix matrix = new Matrix();
-          if (cameraCurrentlyLocked == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-            matrix.preScale(1.0f, -1.0f);
-          }
-  
-          ExifInterface exifInterface = new ExifInterface(new ByteArrayInputStream(data));
-          int rotation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
-          int rotationInDegrees = exifToDegrees(rotation);
-  
-          if (rotation != 0f) {
-            matrix.preRotate(rotationInDegrees);
-          }
-  
-          // Check if matrix has changed. In that case, apply matrix and override data
-          if (!matrix.isIdentity()) {
-            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-            bitmap = applyMatrix(bitmap, matrix);
-  
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, currentQuality, outputStream);
-            data = outputStream.toByteArray();
-          }
+        Log.d(TAG, "CameraPreview jpegPictureCallback");
+
+        try {
+            // Process the RAW data through the pipeline
+            byte[] processedData = photoPostProcessor.process(data);
+
+            if (processedData == null) {
+                eventListener.onPictureTakenError("Processing failed");
+                canTakePicture = true;
+                mCamera.startPreview();
+                return;
+            }
+
+            if (!storeToFile && !storeToGallery) {
+                String encodedImage = Base64.encodeToString(processedData, Base64.NO_WRAP);
+                eventListener.onPictureTaken(encodedImage);
+            } else if (storeToFile) {
+                String path = getTempFilePath();
+                FileOutputStream out = new FileOutputStream(path);
+                out.write(processedData);
+                out.close();
+                eventListener.onPictureTaken(path);
+            } else if (storeToGallery) { 
+                String savedImagePath = saveImageToGallery(processedData);
+                if (savedImagePath != null) {
+                    eventListener.onPictureTaken(savedImagePath);
+                } else {
+                    eventListener.onPictureTakenError("Failed to save image to gallery");
+                }
+            }
+
+            Log.d(TAG, "CameraPreview pictureTakenHandler called back");
+        } catch (OutOfMemoryError e) {
+            // Handle memory errors
+            Log.d(TAG, "CameraPreview OutOfMemoryError");
+            eventListener.onPictureTakenError("Picture too large (memory)");
+        } catch (IOException e) {
+            Log.d(TAG, "CameraPreview IOException");
+            eventListener.onPictureTakenError("IO Error when extracting exif");
+        } catch (Exception e) {
+            Log.d(TAG, "CameraPreview onPictureTaken general exception");
+            eventListener.onPictureTakenError("General error");
+        } finally {
+            canTakePicture = true;
+            mCamera.startPreview();
         }
-  
-        if (!storeToFile && !storeToGallery) {
-          String encodedImage = Base64.encodeToString(data, Base64.NO_WRAP);
-          eventListener.onPictureTaken(encodedImage);
-        } else if (storeToFile) {
-          String path = getTempFilePath();
-          FileOutputStream out = new FileOutputStream(path);
-          out.write(data);
-          out.close();
-          eventListener.onPictureTaken(path);
-        } else if (storeToGallery) { 
-          String savedImagePath = saveImageToGallery(data);
-          if (savedImagePath != null) {
-            eventListener.onPictureTaken(savedImagePath);
-          } else {
-            eventListener.onPictureTakenError("Failed to save image to gallery");
-          }
-        }
-  
-        Log.d(TAG, "CameraPreview pictureTakenHandler called back");
-      } catch (OutOfMemoryError e) {
-        // most likely failed to allocate memory for rotateBitmap
-        Log.d(TAG, "CameraPreview OutOfMemoryError");
-        // failed to allocate memory
-        eventListener.onPictureTakenError("Picture too large (memory)");
-      } catch (IOException e) {
-        Log.d(TAG, "CameraPreview IOException");
-        eventListener.onPictureTakenError("IO Error when extracting exif");
-      } catch (Exception e) {
-        Log.d(TAG, "CameraPreview onPictureTaken general exception");
-        eventListener.onPictureTakenError("General error");
-      } finally {
-        canTakePicture = true;
-        mCamera.startPreview();
-      }
     }
-  };
+};
 
   private Camera.Size getOptimalPictureSize(final int width, final int height, final Camera.Size previewSize, final List<Camera.Size> supportedSizes){
     /*
