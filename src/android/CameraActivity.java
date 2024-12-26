@@ -54,6 +54,9 @@ import java.util.List;
 import java.util.Arrays;
 import java.util.UUID;
 
+import android.content.Intent;
+import android.net.Uri;
+
 public class CameraActivity extends Fragment {
 
   public interface CameraPreviewListener {
@@ -101,6 +104,8 @@ public class CameraActivity extends Fragment {
   public int height;
   public int x;
   public int y;
+
+  public boolean storeToGallery = false;
 
   private enum RecordingState {INITIALIZING, STARTED, STOPPED}
 
@@ -454,44 +459,51 @@ public class CameraActivity extends Fragment {
   PictureCallback jpegPictureCallback = new PictureCallback(){
     public void onPictureTaken(byte[] data, Camera arg1){
       Log.d(TAG, "CameraPreview jpegPictureCallback");
-
+  
       try {
         if (!disableExifHeaderStripping) {
           Matrix matrix = new Matrix();
           if (cameraCurrentlyLocked == Camera.CameraInfo.CAMERA_FACING_FRONT) {
             matrix.preScale(1.0f, -1.0f);
           }
-
+  
           ExifInterface exifInterface = new ExifInterface(new ByteArrayInputStream(data));
           int rotation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
           int rotationInDegrees = exifToDegrees(rotation);
-
+  
           if (rotation != 0f) {
             matrix.preRotate(rotationInDegrees);
           }
-
+  
           // Check if matrix has changed. In that case, apply matrix and override data
           if (!matrix.isIdentity()) {
             Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
             bitmap = applyMatrix(bitmap, matrix);
-
+  
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.JPEG, currentQuality, outputStream);
             data = outputStream.toByteArray();
           }
         }
-
-        if (!storeToFile) {
+  
+        if (!storeToFile && !storeToGallery) {
           String encodedImage = Base64.encodeToString(data, Base64.NO_WRAP);
-
           eventListener.onPictureTaken(encodedImage);
-        } else {
+        } else if (storeToFile) {
           String path = getTempFilePath();
           FileOutputStream out = new FileOutputStream(path);
           out.write(data);
           out.close();
           eventListener.onPictureTaken(path);
+        } else if (storeToGallery) { 
+          String savedImagePath = saveImageToGallery(data);
+          if (savedImagePath != null) {
+            eventListener.onPictureTaken(savedImagePath);
+          } else {
+            eventListener.onPictureTakenError("Failed to save image to gallery");
+          }
         }
+  
         Log.d(TAG, "CameraPreview pictureTakenHandler called back");
       } catch (OutOfMemoryError e) {
         // most likely failed to allocate memory for rotateBitmap
@@ -503,6 +515,7 @@ public class CameraActivity extends Fragment {
         eventListener.onPictureTakenError("IO Error when extracting exif");
       } catch (Exception e) {
         Log.d(TAG, "CameraPreview onPictureTaken general exception");
+        eventListener.onPictureTakenError("General error");
       } finally {
         canTakePicture = true;
         mCamera.startPreview();
@@ -656,32 +669,32 @@ public class CameraActivity extends Fragment {
 
   public void takePicture(final int width, final int height, final int quality){
     Log.d(TAG, "CameraPreview takePicture width: " + width + ", height: " + height + ", quality: " + quality);
-
+  
     if(mPreview != null) {
       if(!canTakePicture){
         return;
       }
-
+  
       canTakePicture = false;
-
+  
       new Thread() {
         public void run() {
           try {
             Camera.Parameters params = mCamera.getParameters();
-
+  
             Camera.Size size = getOptimalPictureSize(width, height, params.getPreviewSize(), params.getSupportedPictureSizes());
             params.setPictureSize(size.width, size.height);
             currentQuality = quality;
-
-            if(cameraCurrentlyLocked == Camera.CameraInfo.CAMERA_FACING_FRONT && !storeToFile) {
+  
+            if(cameraCurrentlyLocked == Camera.CameraInfo.CAMERA_FACING_FRONT && !storeToFile && !storeToGallery) {
               // The image will be recompressed in the callback
               params.setJpegQuality(99);
             } else {
               params.setJpegQuality(quality);
             }
-
+  
             params.setRotation(mPreview.getDisplayOrientation());
-
+  
             mCamera.setParameters(params);
             mCamera.takePicture(shutterCallback, null, jpegPictureCallback);
           } catch (Exception e) {
@@ -912,4 +925,34 @@ public class CameraActivity extends Fragment {
 
     return large;
   }
+
+
+  private String saveImageToGallery(byte[] data) {
+    String savedImagePath = null;
+  
+    try {
+      // Create a file in the public Pictures directory
+      String imageFileName = "CP_" + System.currentTimeMillis() + ".jpg";
+      File storageDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES);
+      File imageFile = new File(storageDir, imageFileName);
+  
+      FileOutputStream fos = new FileOutputStream(imageFile);
+      fos.write(data);
+      fos.close();
+  
+      // Add the image to the system gallery
+      Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+      Uri contentUri = Uri.fromFile(imageFile);
+      mediaScanIntent.setData(contentUri);
+      getActivity().sendBroadcast(mediaScanIntent);
+  
+      savedImagePath = imageFile.getAbsolutePath();
+      Log.d(TAG, "Image saved to gallery: " + savedImagePath);
+    } catch (IOException e) {
+      Log.e(TAG, "Failed to save image to gallery", e);
+    }
+  
+    return savedImagePath;
+  }
+
 }

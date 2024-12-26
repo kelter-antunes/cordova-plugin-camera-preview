@@ -105,17 +105,33 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
   }
 
   @Override
-  public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-
-    if (START_CAMERA_ACTION.equals(action)) {
-      if (cordova.hasPermission(permissions[0])) {
-        return startCamera(args.getInt(0), args.getInt(1), args.getInt(2), args.getInt(3), args.getString(4), args.getBoolean(5), args.getBoolean(6), args.getBoolean(7), args.getString(8), args.getBoolean(9), args.getBoolean(10), args.getBoolean(11), callbackContext);
-      } else {
-        this.execCallback = callbackContext;
-        this.execArgs = args;
-        cordova.requestPermissions(this, CAM_REQ_CODE, permissions);
-        return true;
-      }
+public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+  if (START_CAMERA_ACTION.equals(action)) {
+    if (cordova.hasPermission(permissions[0])) {
+      // Extract the new storeToGallery parameter
+      int x = args.getInt(0);
+      int y = args.getInt(1);
+      int width = args.getInt(2);
+      int height = args.getInt(3);
+      String defaultCamera = args.getString(4);
+      Boolean tapToTakePicture = args.getBoolean(5);
+      Boolean dragEnabled = args.getBoolean(6);
+      Boolean toBack = args.getBoolean(7);
+      String alpha = args.getString(8);
+      Boolean tapFocus = args.getBoolean(9);
+      Boolean disableExifHeaderStripping = args.getBoolean(10);
+      Boolean storeToFile = args.getBoolean(11);
+      Boolean storeToGallery = args.getBoolean(12);
+    
+      return startCamera(x, y, width, height, defaultCamera, tapToTakePicture, dragEnabled, toBack, alpha, tapFocus, disableExifHeaderStripping, storeToFile, storeToGallery, callbackContext);
+    } else {
+      // Existing permission handling
+      this.execCallback = callbackContext;
+      this.execArgs = args;
+      cordova.requestPermissions(this, CAM_REQ_CODE, permissions);
+      return true;
+    }
+  
     } else if (TAKE_PICTURE_ACTION.equals(action)) {
       return takePicture(args.getInt(0), args.getInt(1), args.getInt(2), callbackContext);
     } else if (TAKE_SNAPSHOT_ACTION.equals(action)) {
@@ -267,24 +283,25 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
     return true;
   }
 
-  private boolean startCamera(int x, int y, int width, int height, String defaultCamera, Boolean tapToTakePicture, Boolean dragEnabled, final Boolean toBack, String alpha, boolean tapFocus, boolean disableExifHeaderStripping, boolean storeToFile, CallbackContext callbackContext) {
+  private boolean startCamera(int x, int y, int width, int height, String defaultCamera, Boolean tapToTakePicture, Boolean dragEnabled, final Boolean toBack, String alpha, boolean tapFocus, boolean disableExifHeaderStripping, boolean storeToFile, boolean storeToGallery, CallbackContext callbackContext) {
     Log.d(TAG, "start camera action");
-
+  
     if (fragment != null) {
       callbackContext.error("Camera already started");
       return true;
     }
-
+  
     final float opacity = Float.parseFloat(alpha);
-
+  
     fragment = new CameraActivity();
     fragment.setEventListener(this);
     fragment.defaultCamera = defaultCamera;
     fragment.tapToTakePicture = tapToTakePicture;
     fragment.dragEnabled = dragEnabled;
-    fragment.tapToFocus = tapFocus;
+    fragment.tapFocus = tapFocus;
     fragment.disableExifHeaderStripping = disableExifHeaderStripping;
     fragment.storeToFile = storeToFile;
+    fragment.storeToGallery = storeToGallery; // Pass the new option
     fragment.toBack = toBack;
 
     DisplayMetrics metrics = cordova.getActivity().getResources().getDisplayMetrics();
