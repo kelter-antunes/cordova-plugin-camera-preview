@@ -5,8 +5,11 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.util.Log;
 
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
+
+import androidx.exifinterface.media.ExifInterface;
 
 /**
  * PhotoPostProcessor handles the post-processing pipeline for RAW images.
@@ -81,29 +84,74 @@ public class PhotoPostProcessor {
      * @return The JPEG image as byte array.
      */
     private byte[] bitmapToJpeg(Bitmap bitmap, int quality) {
-        Bitmap rotatedBitmap = rotateBitmapIfNeeded(bitmap);
         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-        rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos);
+        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos);
         return baos.toByteArray();
     }
 
     /**
-     * Rotates the bitmap based on orientation metadata if necessary.
-     * Placeholder for handling EXIF rotation. Implement as needed.
-     *
-     * @param bitmap The Bitmap to rotate.
-     * @return The rotated Bitmap.
+     * Processing step: Handles EXIF-based rotation and mirroring.
      */
-    private Bitmap rotateBitmapIfNeeded(Bitmap bitmap) {
-        // Implement rotation based on EXIF data if available
-        // For now, return the bitmap as-is
-        return bitmap;
+    public static class ExifAdjustmentsStep implements ProcessingStep {
+        private byte[] rawData;
+        private boolean isFrontCamera;
+
+        public ExifAdjustmentsStep(byte[] rawData, boolean isFrontCamera) {
+            this.rawData = rawData;
+            this.isFrontCamera = isFrontCamera;
+        }
+
+        @Override
+        public Bitmap process(Bitmap input) {
+            try {
+                ExifInterface exif = new ExifInterface(new ByteArrayInputStream(rawData));
+                int rotation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+                int rotationInDegrees = exifToDegrees(rotation);
+
+                Matrix matrix = new Matrix();
+
+                // Handle front camera mirroring
+                if (isFrontCamera) {
+                    matrix.preScale(1.0f, -1.0f);
+                }
+
+                // Apply rotation
+                if (rotationInDegrees != 0) {
+                    matrix.preRotate(rotationInDegrees);
+                }
+
+                // Apply matrix if needed
+                if (!matrix.isIdentity()) {
+                    Bitmap rotatedBitmap = Bitmap.createBitmap(input, 0, 0, input.getWidth(), input.getHeight(), matrix, true);
+                    input.recycle(); // Recycle the original bitmap
+                    return rotatedBitmap;
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error in ExifAdjustmentsStep: " + e.getMessage());
+            }
+
+            return input; // Return the input unchanged if no adjustments are needed
+        }
+
+        private int exifToDegrees(int exifOrientation) {
+            switch (exifOrientation) {
+                case ExifInterface.ORIENTATION_ROTATE_90:
+                    return 90;
+                case ExifInterface.ORIENTATION_ROTATE_180:
+                    return 180;
+                case ExifInterface.ORIENTATION_ROTATE_270:
+                    return 270;
+                default:
+                    return 0;
+            }
+        }
     }
 
     /**
      * Initial processing step: Converts RAW image to JPEG format.
      */
-    private class RawToJpegStep implements ProcessingStep {
+    private static class RawToJpegStep implements ProcessingStep {
         @Override
         public Bitmap process(Bitmap input) {
             // Since the input is already a Bitmap, we assume it's in a compatible format.
