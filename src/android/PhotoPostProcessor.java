@@ -33,11 +33,19 @@ public class PhotoPostProcessor {
 
     private List<ProcessingStep> processingSteps;
 
-    public PhotoPostProcessor() {
+    public PhotoPostProcessor(byte[] rawData, boolean isFrontCamera) {
         processingSteps = new ArrayList<>();
+
+
+        // Add EXIF adjustment step
+        processingSteps.add(new ExifAdjustmentsStep(rawData, isFrontCamera));
+
+
         // Add the initial RAW to JPEG conversion step
         processingSteps.add(new RawToJpegStep());
+        
     }
+    
 
     /**
      * Adds a new processing step to the pipeline.
