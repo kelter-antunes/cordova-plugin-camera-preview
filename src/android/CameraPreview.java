@@ -283,7 +283,7 @@ public boolean execute(String action, JSONArray args, CallbackContext callbackCo
     return true;
   }
 
-  private boolean startCamera(int x, int y, int width, int height, String defaultCamera, Boolean tapToTakePicture, Boolean dragEnabled, final Boolean toBack, String alpha, boolean tapFocus, boolean disableExifHeaderStripping, boolean storeToFile, boolean storeToGallery, CallbackContext callbackContext) {
+  private boolean startCamera(int x, int y, int width, int height, String defaultCamera, boolean tapToTakePicture, boolean dragEnabled, final boolean toBack, String alpha, boolean tapFocus, boolean disableExifHeaderStripping, boolean storeToFile, boolean storeToGallery, CallbackContext callbackContext) {
     Log.d(TAG, "start camera action");
   
     if (fragment != null) {
@@ -301,7 +301,7 @@ public boolean execute(String action, JSONArray args, CallbackContext callbackCo
     fragment.tapFocus = tapFocus;
     fragment.disableExifHeaderStripping = disableExifHeaderStripping;
     fragment.storeToFile = storeToFile;
-    fragment.storeToGallery = storeToGallery; // Pass the new option
+    fragment.storeToGallery = storeToGallery;
     fragment.toBack = toBack;
 
     DisplayMetrics metrics = cordova.getActivity().getResources().getDisplayMetrics();
