@@ -118,12 +118,12 @@ public boolean execute(String action, JSONArray args, CallbackContext callbackCo
       Boolean dragEnabled = args.getBoolean(6);
       Boolean toBack = args.getBoolean(7);
       String alpha = args.getString(8);
-      Boolean tapFocus = args.getBoolean(9);
+      Boolean tapToFocus = args.getBoolean(9);
       Boolean disableExifHeaderStripping = args.getBoolean(10);
       Boolean storeToFile = args.getBoolean(11);
       Boolean storeToGallery = args.getBoolean(12);
     
-      return startCamera(x, y, width, height, defaultCamera, tapToTakePicture, dragEnabled, toBack, alpha, tapFocus, disableExifHeaderStripping, storeToFile, storeToGallery, callbackContext);
+      return startCamera(x, y, width, height, defaultCamera, tapToTakePicture, dragEnabled, toBack, alpha, tapToFocus, disableExifHeaderStripping, storeToFile, storeToGallery, callbackContext);
     } else {
       // Existing permission handling
       this.execCallback = callbackContext;
@@ -283,7 +283,7 @@ public boolean execute(String action, JSONArray args, CallbackContext callbackCo
     return true;
   }
 
-  private boolean startCamera(int x, int y, int width, int height, String defaultCamera, boolean tapToTakePicture, boolean dragEnabled, final boolean toBack, String alpha, boolean tapFocus, boolean disableExifHeaderStripping, boolean storeToFile, boolean storeToGallery, CallbackContext callbackContext) {
+  private boolean startCamera(int x, int y, int width, int height, String defaultCamera, boolean tapToTakePicture, boolean dragEnabled, final boolean toBack, String alpha, boolean tapToFocus, boolean disableExifHeaderStripping, boolean storeToFile, boolean storeToGallery, CallbackContext callbackContext) {
     Log.d(TAG, "start camera action");
   
     if (fragment != null) {
@@ -298,7 +298,7 @@ public boolean execute(String action, JSONArray args, CallbackContext callbackCo
     fragment.defaultCamera = defaultCamera;
     fragment.tapToTakePicture = tapToTakePicture;
     fragment.dragEnabled = dragEnabled;
-    fragment.tapFocus = tapFocus;
+    fragment.tapToFocus = tapToFocus;
     fragment.disableExifHeaderStripping = disableExifHeaderStripping;
     fragment.storeToFile = storeToFile;
     fragment.storeToGallery = storeToGallery;
