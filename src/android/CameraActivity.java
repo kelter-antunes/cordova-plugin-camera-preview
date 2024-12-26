@@ -501,16 +501,18 @@ public class CameraActivity extends Fragment {
             eventListener.onPictureTakenError("Picture too large (memory)");
         } catch (IOException e) {
             Log.d(TAG, "CameraPreview IOException");
-            eventListener.onPictureTakenError("IO Error when extracting exif");
+            eventListener.onPictureTakenError("IO Error when extracting exif: " + e.getMessage());
         } catch (Exception e) {
-            Log.d(TAG, "CameraPreview onPictureTaken general exception");
-            eventListener.onPictureTakenError("General error");
+            Log.e(TAG, "CameraPreview onPictureTaken general exception", e);
+            String errorMessage = "General error: " + e.getMessage();
+            eventListener.onPictureTakenError(errorMessage);
         } finally {
             canTakePicture = true;
             mCamera.startPreview();
         }
     }
 };
+
 
   private Camera.Size getOptimalPictureSize(final int width, final int height, final Camera.Size previewSize, final List<Camera.Size> supportedSizes){
     /*
