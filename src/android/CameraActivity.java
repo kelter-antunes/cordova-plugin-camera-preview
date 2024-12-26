@@ -126,12 +126,16 @@ public class CameraActivity extends Fragment {
 
   @Override
   public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-    appResourcesPackage = getActivity().getPackageName();
-
-    // Inflate the layout for this fragment
-    view = inflater.inflate(getResources().getIdentifier("camera_activity", "layout", appResourcesPackage), container, false);
-    createCameraPreview();
-    return view;
+      appResourcesPackage = getActivity().getPackageName();
+  
+      // Inflate the layout for this fragment
+      view = inflater.inflate(getResources().getIdentifier("camera_activity", "layout", appResourcesPackage), container, false);
+      
+      // Initialize PhotoPostProcessor
+      photoPostProcessor = new PhotoPostProcessor();
+  
+      createCameraPreview();
+      return view;
   }
 
   public void setRect(int x, int y, int width, int height){
@@ -144,6 +148,11 @@ public class CameraActivity extends Fragment {
   private void createCameraPreview(){
     if(mPreview == null) {
       setDefaultCameraId();
+
+      // Initialize PhotoPostProcessor if not already done
+      if (photoPostProcessor == null) {
+        photoPostProcessor = new PhotoPostProcessor();
+      }
 
       //set box position and size
       FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(width, height);
